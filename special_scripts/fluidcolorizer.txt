@@ -1,0 +1,89 @@
+-- V1
+-- Created with the help of the Figura Discord community (FiguraMC)
+-- Brought to life by @chmonyasik (ElenaNya in Minecraft)
+-- Special thanks to @jimmyhelp and @auriafoxgirl
+
+-- The name of the .bbmodel to apply the color to
+local modelNames = {"model"} -- can be {"model1", "model2", "model3"}
+
+-- Better not to touch these
+local modelsToUpdate = {}
+for _, name in ipairs(modelNames) do
+    local model = models[name]
+    if model then
+        table.insert(modelsToUpdate, model)
+    else
+        log("Model not found: " .. name)
+    end
+end
+
+-- A table of colors for different fluid types
+-- The key is the fluid tag or ID, and the value is an array of 3 numbers (RGB), each ranging from 0 to 1
+-- You can add your own fluid types with corresponding colors here
+local fluidColors = {
+    --["minecraft:water"] = {0.8, 1, 1},        -- Light blue color for water
+    --["minecraft:lava"] = {1, 0.5, 0.3},       -- Orange-red color for lava
+    ["c:chocolates"] = {0.5, 0.25, 0.1},      -- Dark brown color for chocolate
+    ["c:honey"] = {1, 0.85, 0},               -- Yellow color for honey
+}
+
+-- Better not to touch these
+local r, g, b = 1, 1, 1
+local function getFluidColor(tags)
+    for _, tag in ipairs(tags) do
+        if fluidColors[tag] then
+            return fluidColors[tag]
+        end
+    end
+    return {1, 1, 1}
+end
+local isColorSet = false
+
+-- Can be modified
+local epsilon = 0.01
+
+-- Logs can be enabled here, just remove "--", below you can change the color change speed
+function events.render()
+    --log(r, g, b, isColorSet)
+    local fluidTags = world.getBlockState(player:getPos()):getFluidTags()
+    --log("fluidTags: ", table.concat(fluidTags, ", "))
+    local fluidColor = getFluidColor(fluidTags)
+    --log("fluidColor: ", fluidColor[1], fluidColor[2], fluidColor[3])
+
+-- Return early if r, g, b and fluidColor are already at {1, 1, 1}
+    if (r == 1 and fluidColor[1] == 1) and 
+       (g == 1 and fluidColor[2] == 1) and 
+       (b == 1 and fluidColor[3] == 1) then
+        return
+    end
+
+-- Return early
+    if isColorSet then
+        if #fluidTags == 0 then
+            isColorSet = false
+        else
+            return
+        end
+    end
+
+-- Gradual transition towards the fluid color (by changing -0.01 and 0.01, you can speed up or slow down the color change)
+    r = math.max(0, math.min(1, r + ((fluidColor[1] < r) and -0.01 or 0.01)))
+    g = math.max(0, math.min(1, g + ((fluidColor[2] < g) and -0.01 or 0.01)))
+    b = math.max(0, math.min(1, b + ((fluidColor[3] < b) and -0.01 or 0.01)))
+
+    for _, model in ipairs(modelsToUpdate) do
+        model:setColor(r, g, b)
+    end
+
+-- Return early
+    if fluidColor[1] == 1 and fluidColor[2] == 1 and fluidColor[3] == 1 then
+        return
+    end
+
+-- Check if the color has reached the target fluid color (within an acceptable threshold)
+    if math.abs(r - fluidColor[1]) < epsilon and
+       math.abs(g - fluidColor[2]) < epsilon and
+       math.abs(b - fluidColor[3]) < epsilon then
+        isColorSet = true
+    end
+end

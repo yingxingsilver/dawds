@@ -1,0 +1,50 @@
+-- fluidcolorizer addon
+
+local isColorSet = false
+local isLavaSet = false
+local isWetSet = false
+
+local r, g, b = 1, 1, 1
+
+function events.tick()
+
+    local pos = player:getPos()
+    local block = world.getBlocks(pos, pos)[1]
+    local blockId = block and block.id or ""
+
+    if isColorSet then
+        if player:isWet() or player:isInLava() or blockId == "minecraft:water_cauldron" or blockId == "minecraft:lava_cauldron" then
+            isColorSet = false
+        else
+            return
+        end
+
+    elseif isWetSet then
+        if not player:isWet() and blockId ~= "minecraft:water_cauldron" then
+            isWetSet = false
+        else
+            return
+        end
+
+    elseif isLavaSet then
+        if not player:isInLava() and blockId ~= "minecraft:lava_cauldron" then
+            isLavaSet = false
+        else
+            return
+        end
+    end
+
+    r = math.max(0.9, math.min(1, r + ((player:isWet() or blockId == "minecraft:water_cauldron") and -0.01 or 0.01)))
+    g = math.max(0.5, math.min(1, g + (not (player:isInLava() or blockId == "minecraft:lava_cauldron") and 0.1 or -0.1)))
+    b = math.max(0.3, math.min(1, b + (not (player:isInLava() or blockId == "minecraft:lava_cauldron") and 0.1 or -0.1)))
+
+    models.model:setColor(r, g, b)
+
+    if r == 1 and g == 1 and b == 1 then
+        isColorSet = true
+    elseif r == 0.9 and g == 1 and b == 1 then
+        isWetSet = true
+    elseif r == 1 and g == 0.5 and b == 0.3 then
+        isLavaSet = true
+    end
+end
