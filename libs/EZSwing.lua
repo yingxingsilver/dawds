@@ -1,10 +1,15 @@
+-- Made by JimmyHelp
+-- V3
+
 local batterUp = {}
+
 local swinging
 local isSwing
 function events.tick()
     swinging = player:getSwingTime() == 1
     isSwing = player:isSwingingArm()
 end
+
 local function getSwing(arm)
     if arm == "right" then
         return (player:getSwingArm() == (player:isLeftHanded() and "OFF_HAND" or "MAIN_HAND")) and  player:getPose() ~= "SLEEPING"
@@ -14,6 +19,7 @@ local function getSwing(arm)
         return true
     end
 end
+
 local function getItem(itemid,handy)
     if #itemid == 0 then return true end
     if handy == "right" then
@@ -36,6 +42,7 @@ local function getItem(itemid,handy)
         return getItem(itemid,getSwing("right") and "right" or "left")
     end
 end
+
 local hitBlock
 local function isMining(mine)
     local targetBlock = player:getTargetedBlock(true, player:getGamemode() == "CREATIVE" and 5 or 4.5)
@@ -49,6 +56,7 @@ local function isMining(mine)
         return true
     end
 end
+
 local rand = math.random
 local function getRandom(length,prev)
     local rResult = rand(length)
@@ -58,6 +66,7 @@ local function getRandom(length,prev)
         return rResult
     end
 end
+
 local function checkTable(table)
     if type(table) ~= "table" then
         error("§aCustom Script Warning: §6The value provided for the first param is not a table.§c",3)
@@ -71,6 +80,13 @@ local function checkTable(table)
         end
     end
 end
+
+---@param anims table
+---@param hand string
+---@param item string | table
+---@param mine string
+---@param length boolean
+---@param reset number
 function batterUp:addChainedSwings(anims,hand,item,mine,length,reset)
     checkTable(anims)
     local chain = #anims
@@ -97,6 +113,13 @@ function batterUp:addChainedSwings(anims,hand,item,mine,length,reset)
     end
     return self
 end
+
+
+---@param anims table
+---@param hand string
+---@param item string | table
+---@param mine string
+---@param length boolean
 function batterUp:addRandomSwings(anims,hand,item,mine,length)
     checkTable(anims)
     local prev = rand(#anims)
@@ -117,6 +140,12 @@ function batterUp:addRandomSwings(anims,hand,item,mine,length)
     end
     return self
 end
+
+---@param anims table
+---@param hand string
+---@param item string | table
+---@param mine string
+---@param length boolean
 function batterUp:addSingleSwing(anim,hand,item,mine,length)
     if type(anim) ~= "Animation" then error("§aCustom Script Warning: §6The value provided for the first param is not an animation.§c",3) end
     local item = type(item)=="table" and item or {item}
@@ -128,6 +157,7 @@ function batterUp:addSingleSwing(anim,hand,item,mine,length)
     end
     return self
 end
+
 function batterUp:addNegativeSwing(anim,hand,item,mine,length)
     if type(anim) ~= "Animation" then error("§aCustom Script Warning: Â§6The value provided for the first param is not an animation.§c",3) end
     local item = type(item)=="table" and item or {item}
@@ -139,10 +169,12 @@ function batterUp:addNegativeSwing(anim,hand,item,mine,length)
             else
             anim:stop()
         end
+
         if isSwing and length then
             anim:speed((anim:getLength()*20)/player:getSwingDuration())
         end
     end
     return self
 end
+
 return batterUp
