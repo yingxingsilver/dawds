@@ -1,3 +1,9 @@
+-- V1.14 for 0.1.0 and above
+-- Made by JimmyHelp
+-- Modified by @chmonyasik
+-- Contains Manuel's runLater
+
+-- modified (new)
 local lastItemR = nil
 local lastItemL = nil
 local drinkables = {
@@ -6,10 +12,15 @@ local drinkables = {
     ["minecraft:mushroom_stew"] = true,
     ["minecraft:rabbit_stew"] = true
 }
+--
+
 local anims = {}
+
 local controller = {}
 local controllerMT = {__index = controller}
+
 local objects = {}
+
 local exList = {
     "idling",
     "walking",
@@ -62,6 +73,7 @@ local exList = {
     "hurt",
     "death"
 }
+
 local incList = {
     "holdR",
     "holdL",
@@ -86,6 +98,52 @@ local incList = {
     "brushR",
     "brushL",
 }
+
+--[[local oldList = {} -- simply make the list again
+
+for key, _ in pairs(aList) do
+    oldList[key] = {active = false}
+end]]
+
+--[[ modified (disabled)
+local GSAnimBlend
+for _, key in ipairs(listFiles(nil,true)) do
+    if key:find("GSAnimBlend$") then
+        GSAnimBlend = require(key)
+        break
+    end
+end
+if GSAnimBlend then GSAnimBlend.safe = false end
+
+local function setBlendTime(ex,inc,o)
+    for _,list in pairs(o.aList) do
+        for _,value in pairs(list.list) do
+            value:setBlendTime(list.type == "excluAnims" and ex or inc)
+        end
+    end
+end]]
+
+---@param ex? number
+---@param inc? number
+--[[ modified (disabled)
+    function controller:setBlendTimes(ex,inc)
+    if not GSAnimBlend then error("GSAnimBlend was not found in the avatar, and this function is for interacting with GSAnimBlend.",2) end
+    if type(ex) ~= "number" and ex ~= nil then
+        error("The first arg is a non-number value ("..type(ex).."), must be a number or nil.",2)
+    end
+    if type(inc) ~= "number" and inc ~= nil then
+        error("The second arg is a non-number value ("..type(inc).."), must be a number or nil.",2)
+    end
+    if ex == nil then
+        ex = 0
+    end
+    if inc == nil then
+        inc = ex
+    end
+    setBlendTime(ex,inc,self)
+    return self
+end]]
+
 local flyinit
 local function addAnims(bb,o)
     local listy = o.aList
@@ -100,16 +158,29 @@ local function addAnims(bb,o)
             end
         end
     end
+
+    --[[ modified (disabled)
+    if GSAnimBlend then setBlendTime(4,4,o) end]]
 end
+
+---@param anim table
+---@param ifFly? boolean
 function controller:setAnims(anim,ifFly)
     flyinit = ifFly
     for key, value in pairs(anim) do
         self.aList[key].list = value
     end
+    --[[ modified (disabled)
+    if GSAnimBlend then setBlendTime(4,4,self) end]]
     return self
 end
+
+---- Run Later by manuel_2867 ----
 local tmrs={}
 local t=0
+---Schedules a function to run after a certain amount of ticks
+---@param ticks number|function Amount of ticks to wait, or a predicate function to check each tick until it returns true
+---@param next function Function to run after amount of ticks, or after the predicate function returned true
 local function wait(ticks,next)
     local x=type(ticks)=="number"
     table.insert(tmrs,{t=x and t+ticks,p=x and function()end or ticks,n=next})
@@ -123,7 +194,9 @@ function events.TICK()
         end
     end
 end
+
 local fallVel = -0.6
+---@param vel? number
 function anims:setFallVel(vel)
     if type(vel) ~= "number" and vel ~= nil then
         error("Tried to set the velocity to a non-number value ("..type(vel)..").")
@@ -131,23 +204,29 @@ function anims:setFallVel(vel)
     fallVel = vel or -0.6
     return self
 end
+
 local oneJump = false
+---@param state? boolean
 function anims:setOneJump(state)
     oneJump = state or false
     return self
 end
+
 local auto = true
 function anims:disableAutoSearch()
     auto = false
     return self
 end
+
 local function getPlay(anim)
     local exists, hold = pcall(anim.isHolding,anim)
     return anim:isPlaying() or (exists and hold)
 end
+
 local function getOverriders(type,o)
     return o.overrideStates[type] or o.overrideStates.allAnims
 end
+
 local function addOverriders(self,type,...)
     for _, value in pairs({...}) do
         if #self.overriders[type] == 64 then
@@ -156,30 +235,45 @@ local function addOverriders(self,type,...)
         self.overriders[type][#self.overriders[type]+1] = value
     end
 end
+
+---@param state? boolean
 function controller:setAllOff(state)
     self.setOverrides.allAnims = state
     return self
 end
+
+---@param state? boolean
 function controller:setExcluOff(state)
     self.setOverrides.excluAnims = state
     return self
 end
+
+---@param state? boolean
 function controller:setIncluOff(state)
     self.setOverrides.incluAnims = state
     return self
 end
+
+---@param ... Animation
 function controller:addExcluOverrider(...)
     addOverriders(self,"excluAnims",...)
     return self
 end
+
+---@param ... Animation
 function controller:addIncluOverrider(...)
     addOverriders(self,"incluAnims",...)
     return self
 end
+
+---@param ... Animation
 function controller:addAllOverrider(...)
     addOverriders(self,"allAnims",...)
     return self
 end
+
+---@param exState? string
+---@param inState? string
 function controller:setState(exState,inState)
     if type(exState) ~= "string" and exState ~= nil then
         error("The first arg is a non-string value ("..type(exState).."), must be a string or nil.",2)
@@ -190,12 +284,16 @@ function controller:setState(exState,inState)
     self.toggleState = {excluAnims = exState or "",incluAnims = inState or exState or ""}
     return self
 end
+
 function controller:getState()
     return self.toggleState
 end
+
 local function getStates(type,o)
     return o.toggleState[type]
 end
+
+---@param spec? string
 function controller:getAnimationStates(spec)
     if type(spec) ~= "string" and spec ~= nil then
         error("The animation state is a non-string value ("..type(spec).."), must be a string or nil.",2)
@@ -210,11 +308,14 @@ function controller:getAnimationStates(spec)
         return states
 end
 end
+
 local function setAnimation(anim,override,state,o)
     local saved = o.aList[anim]
     local exists = true
     for _,value in pairs(saved.list) do
+    -- modified
         if value:getName() == state..anim or value:getName():match("_"..anim.."$") then
+    --
             if not saved.active and saved.stop then break end
             value:setPlaying(saved.active and not override)
             if saved.active and saved.stop and not override then
@@ -237,10 +338,12 @@ local function setAnimation(anim,override,state,o)
         end
     end
 end
+
 local flying
 function pings.EZAnims_cFly(x)
     flying = x
 end
+
 local diff = false
 local rightResult, leftResult
 local yvel, grounded, oldgrounded, hasJumped, cFlying, oldcFlying
@@ -255,18 +358,20 @@ local function getInfo()
                 pings.EZAnims_cFly(cFlying)
             end
             oldcFlying = cFlying
+
             updateTimer = updateTimer + 1
             if updateTimer % 200 == 0 then
                 pings.EZAnims_cFly(cFlying)
             end
         end
     end
+
     local pose = player:getPose()
     local velocity = player:getVelocity()
     local moving = velocity.xz:length() > 0.01
     local sprinty = player:isSprinting()
     local vehicle = player:getVehicle()
-    local sitting = vehicle ~= nil or pose == "SITTING" 
+    local sitting = vehicle ~= nil or pose == "SITTING" -- if you're reading this code and see this, "SITTING" isn't a vanilla pose, this is for mods
     local passenger = vehicle and vehicle:getControllingPassenger() ~= player
     local creativeFlying = (flying or false) and not sitting
     local standing = pose == "STANDING"
@@ -279,6 +384,9 @@ local function getInfo()
     local inLiquid = #world.getBlockState(player:getPos()):getFluidTags() >= 1
     local liquidSwim = swimming and inLiquid
     local crawling = swimming and not inLiquid
+
+    -- hasJumped stuff
+    
     yvel = velocity.y
     local hover = yvel < .01 and yvel > -.01
     local goingUp = yvel > .01
@@ -288,43 +396,61 @@ local function getInfo()
     local vehicleGround = sitting and world.getBlockState(vehicle:getPos():add(0,-.1,0))
     oldgrounded = grounded
     grounded = playerGround:isSolidBlock() or player:isOnGround() or (sitting and vehicleGround:isSolidBlock() or sitting and vehicle:isOnGround())
+
     local pv = velocity:mul(1, 0, 1):normalize()
     local pl = models:partToWorldMatrix():applyDir(0,0,-1):mul(1, 0, 1):normalize()
     local fwd = pv:dot(pl)
     local backwards = fwd < -.8
+    --local sideways = pv:cross(pl)
+    --local right = sideways.y > .6
+    --local left = sideways.y < -.6
+
+    -- canJump stuff
+    
     local webbed = world.getBlockState(player:getPos()).id == "minecraft:cobweb"
     local ladder = player:isClimbing() and not grounded and not flying
+
     local canJump = not (inLiquid or webbed or grounded)
+
     local hp = player:getHealth() + player:getAbsorptionAmount()
+
     if oldgrounded ~= grounded and not grounded and yvel > 0 then
         cooldown = true
         wait(10,function() cooldown = false end)
     end
+
     if (oldgrounded ~= grounded and not grounded and yvel > 0) and canJump then hasJumped = true end
     if (grounded and (yvel <= 0 and yvel > -0.1)) or (gliding or inLiquid) then hasJumped = false end
+
     local neverJump = not (gliding or spin or sleeping or swimming or ladder)
     local jumpingUp = hasJumped and goingUp and neverJump
-    local jumpingDown = hasJumped and goingDown  and neverJump or (cooldown and not jumpingUp)
+    local jumpingDown = hasJumped and goingDown --[[and not falling]] and neverJump or (cooldown and not jumpingUp)
     local isJumping = jumpingUp or jumpingDown or falling
     local sprinting = sprinty and standing and not inLiquid and not sitting
     local walking = moving and not sprinting and not sitting
     local forward = walking and not backwards
     local backward = walking and backwards
+
     local handedness = player:isLeftHanded()
     local rightItem = player:getHeldItem(handedness)
     local leftItem = player:getHeldItem(not handedness)
+    
+-- modified (new)
     if rightItem.id ~= "minecraft:air" and rightItem.id ~= lastItemR then
         animations.model.testorito:play()
         lastItemR = rightItem.id
     elseif rightItem.id == "minecraft:air" then
         lastItemR = nil
     end
+
     if leftItem.id ~= "minecraft:air" and leftItem.id ~= lastItemL then
         animations.model.testoritoL:play()
         lastItemL = leftItem.id
     elseif leftItem.id == "minecraft:air" then
         lastItemL = nil
     end
+--
+    
     local rightActive = handedness and "OFF_HAND" or "MAIN_HAND"
     local leftActive = not handedness and "OFF_HAND" or "MAIN_HAND"
     local activeness = player:getActiveHand()
@@ -342,7 +468,9 @@ local function getInfo()
     local exclude = not (crossR or crossL or using)
     local game = player:getGamemode()
     local reach = game and 6 or 3
+
     for _,o in pairs(objects) do
+
         o.diff = false
         for types, tabs in pairs(o.overriders) do
            o.overrideStates[types] = o.setOverrides[types] or false
@@ -357,66 +485,96 @@ local function getInfo()
             end
             o.oldoverStates[types] = o.overrideStates[types]
         end
+
         local ob = o.aList
-        ob.flywalkback.active = creativeFlying and backward 
-        ob.flysprint.active = creativeFlying and sprinting 
+    
+        ob.flywalkback.active = creativeFlying and backward --[[and (not (goingDown or goingUp))]]
+        ob.flysprint.active = creativeFlying and sprinting --[[and not isJumping and (not (goingDown or goingUp))]]
         ob.flyup.active = creativeFlying and goingUp
         ob.flydown.active = creativeFlying and goingDown
-        ob.flywalk.active = creativeFlying and forward  and not sleeping or (ob.flysprint.active and next(ob.flysprint.list)==nil) or (ob.flywalkback.active and next(ob.flywalkback.list)==nil)
+        ob.flywalk.active = creativeFlying and forward --[[and (not (goingDown or goingUp))]] and not sleeping or (ob.flysprint.active and next(ob.flysprint.list)==nil) or (ob.flywalkback.active and next(ob.flywalkback.list)==nil)
         or (ob.flyup.active and next(ob.flyup.list)==nil) or (ob.flydown.active and next(ob.flydown.list)==nil)
-        ob.flying.active = creativeFlying  and not sleeping or (ob.flywalk.active and next(ob.flywalk.list)==nil)
+        ob.flying.active = creativeFlying --[[and not sprinting and not moving and standing and not isJumping and (not (goingDown or goingUp))]] and not sleeping or (ob.flywalk.active and next(ob.flywalk.list)==nil)
+
         ob.watercrouchwalkback.active = inWater and crouching and backward and not goingDown
         ob.watercrouchwalk.active = inWater and crouching and forward and not (goingDown or goingUp) or (ob.watercrouchwalkback.active and next(ob.watercrouchwalkback.list)==nil)
         ob.watercrouchup.active = inWater and crouching and goingUp
         ob.watercrouchdown.active = inWater and crouching and goingDown or (ob.watercrouchup.active and next(ob.watercrouchup.list)==nil)
         ob.watercrouch.active = inWater and crouching and not moving and not (goingDown or goingUp) or (ob.watercrouchdown.active and next(ob.watercrouchdown.list)==nil) or (ob.watercrouchwalk.active and next(ob.watercrouchwalk.list)==nil)
+
         ob.waterdown.active = inWater and goingDown and not falling and standing and not creativeFlying
         ob.waterup.active = inWater and goingUp and standing and not creativeFlying
         ob.waterwalkback.active = inWater and backward and hover and standing and not creativeFlying
         ob.waterwalk.active = inWater and forward and hover and standing and not creativeFlying or (ob.waterwalkback.active and next(ob.waterwalkback.list)==nil) or (ob.waterdown.active and next(ob.waterdown.list)==nil)
         or (ob.waterup.active and next(ob.waterup.list)==nil)
         ob.water.active = inWater and not moving and standing and hover and not creativeFlying or (ob.waterwalk.active and next(ob.waterwalk.list)==nil)
+        
+
+
         ob.crawlstill.active = crawling and not moving
         ob.crawling.active = crawling and moving or (ob.crawlstill.active and next(ob.crawlstill.list)==nil)
+
         ob.swimming.active = liquidSwim or (ob.crawling.active and next(ob.crawling.list)==nil)
+
         ob.elytradown.active = gliding and goingDown
         ob.elytra.active = gliding and not goingDown or (ob.elytradown.active and next(ob.elytradown.list)==nil)
+
         ob.sitpass.active = passenger and standing or false
         ob.sitjumpdown.active = sitting and not passenger and standing and (jumpingDown or falling)
         ob.sitjumpup.active = sitting and not passenger and jumpingUp and standing or (ob.sitjumpdown.active and next(ob.sitjumpdown.list)==nil)
         ob.sitmoveback.active = sitting and not passenger and not isJumping and backwards and standing
         ob.sitmove.active = velocity:length() > 0 and not passenger and not backwards and standing and sitting and not isJumping or (ob.sitmoveback.active and next(ob.sitmoveback.list)==nil) or (ob.sitjumpup.active and next(ob.sitjumpup.list)==nil)
         ob.sitting.active = sitting and not passenger and velocity:length() == 0 and not isJumping and standing or (ob.sitmove.active and next(ob.sitmove.list)==nil) or (ob.sitpass.active and next(ob.sitpass.list)==nil) or false
+
         ob.trident.active = spin
         ob.sleeping.active = sleeping
+
         ob.climbcrouchwalking.active = ladder and crouching and not inWater and (moving or yvel ~= 0)
         ob.climbcrouch.active = ladder and crouching and hover and not moving or (ob.climbcrouchwalking.active and next(ob.climbcrouchwalking.list)==nil)
         ob.climbdown.active = ladder and goingDown and not crouching
-        ob.climbstill.active = ladder and  crouching and hover
-        ob.climbing.active = (ladder and goingUp)  or (ob.climbdown.active and next(ob.climbdown.list)==nil) or (ob.climbstill.active and next(ob.climbstill.list)==nil)
+        ob.climbstill.active = ladder and --[[not]] crouching and hover
+        ob.climbing.active = (ladder and goingUp) --[[and not crouching]] or (ob.climbdown.active and next(ob.climbdown.list)==nil) or (ob.climbstill.active and next(ob.climbstill.list)==nil)
+
         ob.crouchjumpdown.active = crouching and jumpingDown and not inWater and not ladder
         ob.crouchjumpup.active = crouching and jumpingUp and not inWater and not ladder or (not oneJump and (ob.crouchjumpdown.active and next(ob.crouchjumpdown.list)==nil))
         ob.crouchwalkback.active = backward and crouching and not inWater and not ladder or (ob.watercrouchwalkback.active and next(ob.watercrouchwalkback.list)==nil and next(ob.watercrouchwalk.list)==nil and next(ob.watercrouch.list)==nil)
         ob.crouchwalk.active = forward and crouching and not (jumpingDown or jumpingUp) and not inWater and not ladder or (ob.crouchwalkback.active and next(ob.crouchwalkback.list)==nil) or (not oneJump and (ob.crouchjumpup.active and next(ob.crouchjumpup.list)==nil)) or ((ob.watercrouchwalk.active and not ob.watercrouchwalkback.active) and next(ob.watercrouchwalk.list)==nil and next(ob.watercrouch.list)==nil)
+        
+-- modified (needs cleaning, deleted cooldown from second row)
         ob.crouching.active = crouching and not walking and not inWater and not ladder and not cooldown
         or (crouching or ob.crouchwalk.active and isJumping and not walking and not inWater and not ladder)
         or (ob.crouchwalk.active and next(ob.crouchwalk.list)==nil) 
         or (ob.climbcrouch.active and next(ob.climbcrouch.list)==nil) 
         or ((ob.watercrouch.active and not ob.watercrouchwalk.active) and next(ob.watercrouch.list)==nil)
+--
+       
         ob.falling.active = falling and not gliding and not creativeFlying and not sitting
+        
         ob.sprintjumpdown.active = jumpingDown and sprinting and not creativeFlying and not ladder or false
         ob.sprintjumpup.active = jumpingUp and sprinting and not creativeFlying and not ladder or (not oneJump and (ob.sprintjumpdown.active and next(ob.sprintjumpdown.list)==nil)) or false
-        ob.jumpingdown.active = jumpingDown and not ladder and not sprinting and not crouching and not sitting and not sleeping and not gliding and not creativeFlying and not spin and not inWater  or (oneJump and (ob.sprintjumpdown.active and next(ob.sprintjumpdown.list)==nil)) or (oneJump and (ob.crouchjumpdown.active and next(ob.crouchjumpdown.list)==nil))
+        ob.jumpingdown.active = jumpingDown and not ladder and not sprinting and not crouching and not sitting and not sleeping and not gliding and not creativeFlying and not spin and not inWater --[[or (ob.falling.active and next(ob.falling.list)==nil)]] or (oneJump and (ob.sprintjumpdown.active and next(ob.sprintjumpdown.list)==nil)) or (oneJump and (ob.crouchjumpdown.active and next(ob.crouchjumpdown.list)==nil))
+        
+-- modified (needs cleaning)
         ob.jumpingup.active = (jumpingUp or (crouching and jumpingUp)) and not ladder and not sprinting and not sitting and not creativeFlying and not inWater or (ob.trident.active and next(ob.trident.list)==nil) or (oneJump and (ob.sprintjumpup.active and next(ob.sprintjumpup.list)==nil)) or (oneJump and (ob.crouchjumpup.active and next(ob.crouchjumpup.list)==nil))
+        --waor (ob.jumpingdown.active and next(ob.jumpingdown.list)==nil)
+        --log(crouching, creativeFlying, ob.jumpingup.active)
+        --log(jumpingUp, jumpingDown, isJumping)
+--
+ 
         ob.sprinting.active = sprinting and not creativeFlying and not ladder and not inWater or (not oneJump and (ob.sprintjumpup.active and next(ob.sprintjumpup.list)==nil)) or false
         ob.walkingback.active = backward and standing and not creativeFlying and not ladder and not inWater or (ob.flywalkback.active and next(ob.flywalkback.list)==nil and next(ob.flywalk.list)==nil and next(ob.flying.list)==nil)
+        
+-- modified (needs cleaning)
 if walkingStarted == nil then walkingStarted = false end
+
 if (forward and standing) or ob.crouchwalk.active then
     walkingStarted = true
 end
+
 if not forward and not crouching then
     walkingStarted = false
 end
+
 ob.walking.active = walkingStarted and not creativeFlying and not ladder and not inWater and not ob.crawling.active
     or (ob.walkingback.active and next(ob.walkingback.list) == nil)
     or (ob.sprinting.active and next(ob.sprinting.list) == nil)
@@ -427,22 +585,44 @@ ob.walking.active = walkingStarted and not creativeFlying and not ladder and not
     or (ob.waterwalk.active and (next(ob.waterwalk.list) == nil and next(ob.water.list) == nil))
     or ((ob.flywalk.active and not ob.flywalkback.active) and next(ob.flywalk.list) == nil and next(ob.flying.list) == nil)
     or (ob.crouchwalk.active and (next(ob.crouchwalk) == nil or next(ob.crouching.list) == nil))
-        ob.idling.active = (standing or (crouching and not inWater) or ob.sleeping.active) and not sitting and not (ob.hornR.active or ob.hornL.active) and not inWater and not creativeFlying and not ladder and not (ob.eatR.active or ob.eatL.active) and not (ob.drinkR.active or ob.drinkL.active) 
+--
+
+-- modified (needs cleaning)
+        ob.idling.active = (standing or (crouching and not inWater) or ob.sleeping.active) and not sitting and not (ob.hornR.active or ob.hornL.active) and not inWater and not creativeFlying and not ladder and not (ob.eatR.active or ob.eatL.active) and not (ob.drinkR.active or ob.drinkL.active) --or (ob.sleeping.active and next(ob.sleeping.list)==nil) 
         or (ob.sitting.active and next(ob.sitting.list)==nil)
-         or ((ob.flying.active and not ob.flywalk.active) and next(ob.flying.list)==nil) 
+        --or ((ob.water.active and not ob.waterwalk.active) 
+        --[[or ((not ob.water.active) and next(ob.water.list)==nil)]] or ((ob.flying.active and not ob.flywalk.active) and next(ob.flying.list)==nil) --[[or ((ob.crouching.active and not ob.crouchwalk.active) and next(ob.crouching.list)==nil)]]
+
+        --[[ob.idling.active = not moving and not sprinting and standing and not isJumping and not sitting and not inWater and not creativeFlying and not ladder or (ob.sleeping.active and next(ob.sleeping.list)==nil) or (ob.sitting.active and next(ob.sitting.list)==nil)
+        or ((ob.water.active and not ob.waterwalk.active) and next(ob.water.list)==nil) or ((ob.flying.active and not ob.flywalk.active) and next(ob.flying.list)==nil) or ((ob.crouching.active and not ob.crouchwalk.active) and next(ob.crouching.list)==nil) or (ob.jumpingup.active and next(ob.jumpingup.list)==nil)]]
+--
+
         ob.death.active = hp <= 0
         ob.hurt.active = player:getNbt().HurtTime > 0 and hp > 0
         ob.holdR.active = rightItem.id~="minecraft:air" and exclude
         ob.holdL.active = leftItem.id~="minecraft:air" and exclude
+        
         ob.eatR.active = usingR == "EAT"
+        -- modified (new)
         and not drinkables[rightItem.id]
+        --
         ob.eatL.active = usingL == "EAT"
+        -- modified (new)
         and not drinkables[leftItem.id]
+        --
+        
         ob.drinkR.active = usingR == "DRINK"
+        -- modified (new)
         or (usingR == "EAT" and drinkables[rightItem.id])
+        --
         ob.drinkL.active = usingL == "DRINK" 
+        -- modified (new)
         or (usingL == "EAT" and drinkables[leftItem.id])
+        --
+
         ob.blockR.active = usingR == "BLOCK"
+
+-- modified (new)
     if not ob.blockR.active and rightItem.id:find("shield") then
         models.model.Player.root.Torso.RightArm1.RightArm.RightItemPivot:setPos(0, 0, -0.8)
     elseif rightItem.id:find("crossbow") then
@@ -452,7 +632,11 @@ ob.walking.active = walkingStarted and not creativeFlying and not ladder and not
     else 
         models.model.Player.root.Torso.RightArm1.RightArm.RightItemPivot:setPos()   
     end
+--
+
         ob.blockL.active = usingL == "BLOCK"
+
+-- modified (new)
     if not ob.blockL.active and leftItem.id:find("shield")then
         models.model.Player.root.Torso.LeftArm1.LeftArm.LeftItemPivot:setPos(0, 0, -0.8)
     elseif leftItem.id:find("crossbow") then
@@ -462,6 +646,7 @@ ob.walking.active = walkingStarted and not creativeFlying and not ladder and not
     else
         models.model.Player.root.Torso.LeftArm1.LeftArm.LeftItemPivot:setPos()   
     end
+--        
         ob.bowR.active = usingR == "BOW"
         ob.bowL.active = usingL == "BOW"
         ob.loadR.active = usingR == "CROSSBOW"
@@ -476,6 +661,7 @@ ob.walking.active = walkingStarted and not creativeFlying and not ladder and not
         ob.hornL.active = usingL == "TOOT_HORN"
         ob.brushR.active = usingR == "BRUSH"
         ob.brushL.active = usingL == "BRUSH"
+
         for key,value in pairs(o.aList) do
             if (value.active ~= o.oldList[key].active) then
                 setAnimation(key,getOverriders(value.type,o),getStates(value.type,o),o)
@@ -485,6 +671,7 @@ ob.walking.active = walkingStarted and not creativeFlying and not ladder and not
             end
             o.oldList[key].active = value.active
         end
+
         o.toggleDiff = false
         for key,_ in pairs(o.toggleState) do
             if o.oldToggle[key] ~= o.toggleState[key] then
@@ -494,9 +681,11 @@ ob.walking.active = walkingStarted and not creativeFlying and not ladder and not
         end
     end
 end
+
 function events.tick()
     getInfo()
 end
+
 local function getBBModels()
     local bbmodels = {}
     for _,layer in pairs(models:getChildren()) do
@@ -510,20 +699,25 @@ local function getBBModels()
             end
         end
     end
+
     if next(bbmodels) == nil then
         error("No blockbench models containing animations were found.")
     end
+
     local aList = {}
     local oldList = {}
     for _, value in pairs(exList) do
         aList[value] = {active = false,list = {},type = "excluAnims"}
         oldList[value] = {active = false}
     end
+
     for _, value in pairs(incList) do
         aList[value] = {active = false,list = {},type = "incluAnims"}
         oldList[value] = {active = false}
     end
+
     aList.hurt.stop = true
+
     local o = setmetatable(
     {
         bbmodels=bbmodels,
@@ -542,26 +736,33 @@ local function getBBModels()
     objects[1] = o
     addAnims(bbmodels,o)
 end
+
 function events.entity_init()
     if #objects == 0 then getBBModels() end
 end
+
 local firstRun = true
+---@param ... table
 function anims:addBBModel(...)
     local bbmodels = {...}
     if next(bbmodels) == nil then
         error("The blockbench model provided couldn't be found because it has no animations, or because of a typo or some other mistake.",2)
     end
+
     local aList = {}
     local oldList = {}
     for _, value in pairs(exList) do
         aList[value] = {active = false,list = {},type = "excluAnims"}
         oldList[value] = {active = false}
     end
+
     for _, value in pairs(incList) do
         aList[value] = {active = false,list = {},type = "incluAnims"}
         oldList[value] = {active = false}
     end
+    
     aList.hurt.stop = true
+
     local o = setmetatable(
     {
         bbmodels=bbmodels,
@@ -584,5 +785,6 @@ function anims:addBBModel(...)
     if auto then addAnims(bbmodels,o) end
     return o
 end
+
 anims.controller = controller
 return anims
